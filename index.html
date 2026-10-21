@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="ru" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Talk — Личный мессенджер</title>
+
+  <!-- Google Fonts: Newsreader (Editorial Serif) + Inter + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['Newsreader', 'Georgia', 'serif'],
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            craft: {
+              // Warm Ivory / Parchment Palette
+              bg: '#FAF9F5',
+              surface: '#FFFFFF',
+              subtle: '#F4F0E6',
+              subtleHover: '#EBE6DA',
+              border: '#E8E3D7',
+              borderSubtle: '#F0EBE0',
+              text: '#22201D',
+              secondary: '#57534E',
+              muted: '#857F75',
+              faint: '#B5AF9F',
+
+              // Terracotta Accent
+              terracotta: '#D97757',
+              terracottaHover: '#C66545',
+              terracottaLight: '#FDF5F1',
+              terracottaBorder: '#E8C5B8',
+
+              // Dark Craft Palette
+              darkBg: '#181715',
+              darkSurface: '#21201D',
+              darkSubtle: '#2A2825',
+              darkSubtleHover: '#33312C',
+              darkBorder: '#34322C',
+              darkBorderSubtle: '#2B2924',
+              darkText: '#ECE7DE',
+              darkSecondary: '#B0A99D',
+              darkMuted: '#7E786E',
+            }
+          },
+          boxShadow: {
+            'craft-card': '0 1px 3px rgba(34, 32, 29, 0.04), 0 1px 2px rgba(34, 32, 29, 0.02)',
+            'craft-input': '0 12px 32px -4px rgba(34, 32, 29, 0.08), 0 2px 6px -1px rgba(34, 32, 29, 0.04)',
+            'craft-float': '0 16px 40px -8px rgba(34, 32, 29, 0.16)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #EFECE6;
+      color: #22201D;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .dark body {
+      background-color: #0E0D0C;
+      color: #ECE7DE;
+    }
+
+    /* Device frame for desktop viewing */
+    .mobile-frame {
+      width: 100%;
+      height: 100%;
+      max-width: 420px;
+      background: #FAF9F5;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    @media (min-width: 640px) {
+      .mobile-frame {
+        height: 94dvh;
+        max-height: 860px;
+        border-radius: 44px;
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+      }
+      .dark .mobile-frame {
+        border-color: #2D2B26;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+      }
+    }
+
+    .dark .mobile-frame {
+      background: #181715;
+    }
+
+    /* Custom thin scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(133, 127, 117, 0.25);
+      border-radius: 4px;
+    }
+
+    /* Safe area padding for notch & home bar */
+    .pt-safe {
+      padding-top: max(env(safe-area-inset-top), 12px);
+    }
+    .pb-safe {
+      padding-bottom: max(env(safe-area-inset-bottom), 12px);
+    }
+
+    /* View transition */
+    .slide-enter {
+      animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* Audio wave animation */
+    @keyframes waveBounce {
+      0%, 100% { height: 6px; }
+      50% { height: 18px; }
+    }
+    .is-playing .wave-bar:nth-child(2) { animation: waveBounce 0.8s ease-in-out infinite 0.1s; }
+    .is-playing .wave-bar:nth-child(3) { animation: waveBounce 0.8s ease-in-out infinite 0.25s; }
+    .is-playing .wave-bar:nth-child(4) { animation: waveBounce 0.8s ease-in-out infinite 0.4s; }
+    .is-playing .wave-bar:nth-child(5) { animation: waveBounce 0.8s ease-in-out infinite 0.15s; }
+    .is-playing .wave-bar:nth-child(6) { animation: waveBounce 0.8s ease-in-out infinite 0.35s; }
+    .is-playing .wave-bar:nth-child(7) { animation: waveBounce 0.8s ease-in-out infinite 0.2s; }
+  </style>
+</head>
+
+<body>
+
+  <!-- ========================================================
+       PLATFORM SWITCHER: MOBILE <-> PC
+       Floating pill to seamlessly test both versions
+       ======================================================== -->
+  <div id="platformSwitcher" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-craft-surface/95 dark:bg-craft-darkSurface/95 backdrop-blur-md border border-craft-border dark:border-craft-darkBorder p-1 rounded-2xl shadow-craft-float flex items-center space-x-1 select-none transition-all">
+    <button onclick="setPlatformMode('mobile')" id="btnSwitchMobile" class="px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center space-x-1.5 transition-all bg-craft-text text-craft-bg dark:bg-craft-darkText dark:text-craft-darkBg shadow-xs">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+      <span>Мобильная</span>
+    </button>
+
+    <button onclick="setPlatformMode('pc')" id="btnSwitchPC" class="px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center space-x-1.5 transition-all text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      <span>ПК версия</span>
+    </button>
+  </div>
+
+  <!-- ========================================================
+       MOBILE VERSION (UNTOUCHED AND EXACT)
+       ======================================================== -->
+  <div id="mobileContainer" class="mobile-frame select-none">
+    
+    <!-- VIEW 1: INBOX & CRAFT COMPOSE HUB -->
+    <div id="welcomeView" class="flex-1 flex flex-col h-full overflow-hidden">
+      
+      <!-- Top Navigation Header -->
+      <header class="pt-safe px-5 pt-3 pb-2.5 flex items-center justify-between border-b border-craft-border/70 dark:border-craft-darkBorder/70 bg-craft-bg/95 dark:bg-craft-darkBg/95 backdrop-blur-md z-20">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle border border-craft-border dark:border-craft-darkBorder flex items-center justify-center font-serif text-sm font-semibold text-craft-text dark:text-craft-darkText">
+            Т
+          </div>
+          <span class="font-serif text-lg font-medium text-craft-text dark:text-craft-darkText tracking-tight">Чаты</span>
+        </div>
+
+        <div class="flex items-center space-x-1.5">
+          <!-- Theme toggle -->
+          <button onclick="toggleTheme()" title="Сменить тему" class="p-2 rounded-xl text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText active:scale-95 transition-all">
+            <svg id="themeIcon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </button>
+
+          <!-- User profile avatar -->
+          <button onclick="showToast('Профиль: Александр В.')" class="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 font-medium text-xs flex items-center justify-center border border-craft-border dark:border-craft-darkBorder active:scale-95 transition-transform">
+            АВ
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Main Stream -->
+      <main class="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+        
+        <!-- Editorial Date & Greeting -->
+        <div class="px-1 space-y-1">
+          <p id="liveDateDisplay" class="text-[11px] font-mono text-craft-muted dark:text-craft-darkMuted uppercase tracking-wider">
+            Понедельник, 20 октября
+          </p>
+          <h1 id="dynamicGreeting" class="font-serif text-2xl font-normal text-craft-text dark:text-craft-darkText tracking-tight leading-snug">
+            Добрый день, Александр
+          </h1>
+        </div>
+
+        <!-- THE CRAFT PROMPT & COMPOSE BAR -->
+        <div class="bg-craft-surface dark:bg-craft-darkSurface rounded-3xl border border-craft-border dark:border-craft-darkBorder p-3.5 shadow-craft-input focus-within:border-craft-terracotta focus-within:ring-2 focus-within:ring-craft-terracotta/15 transition-all">
+          
+          <!-- Contact chips row -->
+          <div class="pb-2.5 mb-2 border-b border-craft-borderSubtle dark:border-craft-darkBorderSubtle">
+            <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <span class="text-[11px] font-mono uppercase text-craft-muted dark:text-craft-darkMuted mr-1 flex-shrink-0">Кому:</span>
+              
+              <button onclick="selectRecipient(1)" data-rec-id="1" class="rec-chip active px-2.5 py-1 rounded-xl bg-craft-terracotta text-white text-xs font-medium flex items-center space-x-1.5 flex-shrink-0 transition-all">
+                <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                <span>Полина</span>
+              </button>
+
+              <button onclick="selectRecipient(2)" data-rec-id="2" class="rec-chip px-2.5 py-1 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle text-craft-text dark:text-craft-darkText text-xs font-medium hover:bg-craft-subtleHover dark:hover:bg-craft-darkSubtleHover flex items-center space-x-1.5 flex-shrink-0 transition-all">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Михаил</span>
+              </button>
+
+              <button onclick="selectRecipient(3)" data-rec-id="3" class="rec-chip px-2.5 py-1 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle text-craft-text dark:text-craft-darkText text-xs font-medium hover:bg-craft-subtleHover dark:hover:bg-craft-darkSubtleHover flex items-center space-x-1.5 flex-shrink-0 transition-all">
+                <span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+                <span>Продукт</span>
+              </button>
+
+              <button onclick="selectRecipient(4)" data-rec-id="4" class="rec-chip px-2.5 py-1 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle text-craft-text dark:text-craft-darkText text-xs font-medium hover:bg-craft-subtleHover dark:hover:bg-craft-darkSubtleHover flex items-center space-x-1.5 flex-shrink-0 transition-all">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Дарья</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Input Area -->
+          <textarea 
+            id="hubInput"
+            rows="2" 
+            placeholder="Написать сообщение Полине..."
+            oninput="handleHubInput(this)"
+            onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); submitFromHub();}"
+            class="w-full bg-transparent text-sm text-craft-text dark:text-craft-darkText placeholder-craft-muted/70 resize-none focus:outline-none leading-relaxed font-sans"
+          ></textarea>
+
+          <!-- Compose Toolbar -->
+          <div class="flex items-center justify-between pt-2 mt-1 border-t border-craft-borderSubtle dark:border-craft-darkBorderSubtle">
+            <div class="flex items-center space-x-1">
+              <button onclick="showToast('Прикрепить файл или фото')" title="Прикрепить файл" class="p-1.5 rounded-lg text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText active:scale-90 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+              </button>
+
+              <button onclick="recordAudioMemo()" title="Записать голос" class="p-1.5 rounded-lg text-craft-muted hover:text-craft-terracotta active:scale-90 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+              </button>
+            </div>
+
+            <!-- Terracotta Upward Arrow Send Button -->
+            <button 
+              id="hubSendBtn"
+              onclick="submitFromHub()"
+              disabled
+              class="w-8 h-8 rounded-full bg-craft-border dark:bg-craft-darkBorder text-craft-muted flex items-center justify-center transition-all duration-150 cursor-not-allowed"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Filter Tabs for Conversations -->
+        <div class="flex items-center space-x-1.5 px-0.5">
+          <button onclick="filterThreads('all', this)" class="filter-tab active px-3 py-1.5 rounded-full text-xs font-medium bg-craft-text text-craft-bg dark:bg-craft-darkText dark:text-craft-darkBg transition-all">
+            Все
+          </button>
+          <button onclick="filterThreads('unread', this)" class="filter-tab px-3 py-1.5 rounded-full text-xs font-medium bg-craft-subtle dark:bg-craft-darkSubtle text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText transition-all">
+            Непрочитанные (1)
+          </button>
+          <button onclick="filterThreads('direct', this)" class="filter-tab px-3 py-1.5 rounded-full text-xs font-medium bg-craft-subtle dark:bg-craft-darkSubtle text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText transition-all">
+            Личные
+          </button>
+          <button onclick="filterThreads('team', this)" class="filter-tab px-3 py-1.5 rounded-full text-xs font-medium bg-craft-subtle dark:bg-craft-darkSubtle text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText transition-all">
+            Группы
+          </button>
+        </div>
+
+        <!-- Conversations List -->
+        <div class="space-y-2">
+          <div id="recentChatsDeck" class="space-y-1.5">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+      </main>
+
+    </div>
+
+    <!-- VIEW 2: ACTIVE CONVERSATION SCREEN -->
+    <div id="conversationView" class="hidden absolute inset-0 bg-craft-bg dark:bg-craft-darkBg flex flex-col h-full z-30 slide-enter">
+      
+      <!-- Top Chat Header -->
+      <header class="pt-safe px-4 pt-3 pb-2.5 border-b border-craft-border/70 dark:border-craft-darkBorder/70 bg-craft-surface/95 dark:bg-craft-darkSurface/95 backdrop-blur-md flex items-center justify-between z-10">
+        <div class="flex items-center space-x-3">
+          <!-- Back button -->
+          <button onclick="backToWelcome()" class="p-1 -ml-1 text-craft-text dark:text-craft-darkText active:scale-90 transition-transform">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+
+          <!-- Chat avatar -->
+          <div id="activeAvatar" class="w-9 h-9 rounded-2xl flex items-center justify-center font-serif text-white font-medium text-xs shadow-xs">
+            <!-- Dynamic -->
+          </div>
+
+          <div>
+            <h3 id="activeName" class="font-serif text-sm font-semibold text-craft-text dark:text-craft-darkText leading-tight">Полина Смирнова</h3>
+            <p id="activeStatus" class="text-[11px] text-craft-muted flex items-center space-x-1.5 mt-0.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>в сети • Дизайн продукта</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-1">
+          <button onclick="showToast('Аудиозвонок...')" title="Позвонить" class="p-2 text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText active:scale-95 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+          </button>
+
+          <button onclick="backToWelcome()" title="Закрыть чат" class="p-2 text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText active:scale-95 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Pinned Note Bar -->
+      <div id="pinnedBanner" class="hidden px-4 py-2 bg-craft-subtle dark:bg-craft-darkSubtle border-b border-craft-border/80 dark:border-craft-darkBorder/80 flex items-center justify-between text-xs">
+        <div class="flex items-center space-x-2 truncate">
+          <svg class="w-3.5 h-3.5 text-craft-terracotta flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+          <span id="pinnedText" class="font-medium text-craft-text dark:text-craft-darkText text-[11px] truncate">Правки по мобильному флоу приняты</span>
+        </div>
+        <button onclick="dismissPinned()" class="text-craft-muted hover:text-craft-text text-[11px] ml-2 flex-shrink-0">✕</button>
+      </div>
+
+      <!-- Messages Stream -->
+      <div id="chatMessagesStream" class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Typing Indicator -->
+      <div id="typingBar" class="hidden px-5 py-1 text-[11px] text-craft-muted flex items-center space-x-1.5 font-mono">
+        <span class="w-1.5 h-1.5 rounded-full bg-craft-terracotta animate-pulse"></span>
+        <span id="typingLabel">Собеседник печатает...</span>
+      </div>
+
+      <!-- Bottom Chat Input Bar -->
+      <div class="p-3 border-t border-craft-border/70 dark:border-craft-darkBorder/70 bg-craft-surface dark:bg-craft-darkSurface pb-safe">
+        <div class="bg-craft-bg dark:bg-craft-darkBg rounded-2xl border border-craft-border dark:border-craft-darkBorder p-2 px-3 shadow-sm focus-within:border-craft-terracotta focus-within:ring-2 focus-within:ring-craft-terracotta/15 transition-all">
+          
+          <textarea 
+            id="chatInput" 
+            rows="1" 
+            placeholder="Сообщение..."
+            oninput="handleChatInput(this)"
+            onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendChatMessage();}"
+            class="w-full bg-transparent text-sm text-craft-text dark:text-craft-darkText placeholder-craft-muted/70 resize-none focus:outline-none max-h-28 leading-relaxed font-sans"
+          ></textarea>
+
+          <div class="flex items-center justify-between pt-1.5 mt-0.5 border-t border-craft-borderSubtle dark:border-craft-darkBorderSubtle">
+            <div class="flex items-center space-x-1">
+              <button onclick="showToast('Прикрепить файл или фото')" class="p-1 rounded-lg text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText active:scale-95 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+              </button>
+
+              <button onclick="recordAudioMemo()" class="p-1 rounded-lg text-craft-muted hover:text-craft-terracotta active:scale-95 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+              </button>
+            </div>
+
+            <!-- Terracotta Circular Send Button -->
+            <button 
+              id="chatSendBtn" 
+              onclick="sendChatMessage()" 
+              disabled 
+              class="w-7 h-7 rounded-full bg-craft-border dark:bg-craft-darkBorder text-craft-muted flex items-center justify-center flex-shrink-0 transition-all duration-150 cursor-not-allowed"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ========================================================
+       PC / DESKTOP VERSION
+       Signature Claude Desktop Craft Messenger
+       ======================================================== -->
+  <div id="pcContainer" class="hidden fixed inset-0 w-full h-full bg-craft-bg dark:bg-craft-darkBg z-40 flex overflow-hidden select-none">
+    
+    <!-- Left Desktop Sidebar (340px) -->
+    <aside class="w-80 md:w-88 flex-shrink-0 border-r border-craft-border/80 dark:border-craft-darkBorder/80 bg-craft-surface/80 dark:bg-craft-darkSurface/80 backdrop-blur-md flex flex-col h-full">
+      
+      <!-- Top Brand & Controls -->
+      <div class="p-4 border-b border-craft-border/70 dark:border-craft-darkBorder/70 flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle border border-craft-border dark:border-craft-darkBorder flex items-center justify-center font-serif text-sm font-semibold text-craft-text dark:text-craft-darkText">
+            Т
+          </div>
+          <div>
+            <h2 class="font-serif text-base font-semibold text-craft-text dark:text-craft-darkText tracking-tight">Talk</h2>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-1">
+          <button onclick="openPCWelcome()" title="Новое сообщение / Главная" class="p-2 rounded-xl text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText hover:bg-craft-subtle dark:hover:bg-craft-darkSubtle active:scale-95 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          </button>
+
+          <button onclick="toggleTheme()" title="Сменить тему" class="p-2 rounded-xl text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText hover:bg-craft-subtle dark:hover:bg-craft-darkSubtle active:scale-95 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </button>
+
+          <button onclick="showToast('Профиль: Александр В.')" class="w-7 h-7 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 font-medium text-[11px] flex items-center justify-center border border-craft-border dark:border-craft-darkBorder active:scale-95 transition-transform ml-1">
+            АВ
+          </button>
+        </div>
+      </div>
+
+      <!-- Search & Filter Bar -->
+      <div class="p-3.5 space-y-2.5 border-b border-craft-border/60 dark:border-craft-darkBorder/60">
+        <div class="relative">
+          <svg class="w-3.5 h-3.5 absolute left-3 top-3 text-craft-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input 
+            type="text" 
+            id="pcSearchInput"
+            oninput="handlePCSearch(this.value)"
+            placeholder="Поиск по диалогам..." 
+            class="w-full bg-craft-subtle dark:bg-craft-darkSubtle text-xs text-craft-text dark:text-craft-darkText placeholder-craft-muted/70 pl-8 pr-12 py-2 rounded-xl border border-craft-border/80 dark:border-craft-darkBorder focus:outline-none focus:border-craft-terracotta"
+          />
+          <span class="absolute right-2.5 top-2.5 text-[9px] font-mono text-craft-muted bg-craft-surface dark:bg-craft-darkSurface px-1.5 py-0.5 rounded border border-craft-border/60">⌘K</span>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
+          <button onclick="filterPCThreads('all', this)" class="pc-filter-tab active px-2.5 py-1 rounded-lg text-[11px] font-medium bg-craft-text text-craft-bg dark:bg-craft-darkText dark:text-craft-darkBg transition-all">
+            Все
+          </button>
+          <button onclick="filterPCThreads('unread', this)" class="pc-filter-tab px-2.5 py-1 rounded-lg text-[11px] font-medium bg-craft-subtle dark:bg-craft-darkSubtle text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText transition-all">
+            Непрочитанные (1)
+          </button>
+          <button onclick="filterPCThreads('direct', this)" class="pc-filter-tab px-2.5 py-1 rounded-lg text-[11px] font-medium bg-craft-subtle dark:bg-craft-darkSubtle text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText transition-all">
+            Личные
+          </button>
+          <button onclick="filterPCThreads('team', this)" class="pc-filter-tab px-2.5 py-1 rounded-lg text-[11px] font-medium bg-craft-subtle dark:bg-craft-darkSubtle text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText transition-all">
+            Группы
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Chats Deck -->
+      <div id="pcRecentChatsDeck" class="flex-1 overflow-y-auto p-2.5 space-y-1">
+        <!-- Rendered by JS -->
+      </div>
+
+    </aside>
+
+    <!-- Right Main Desktop Canvas -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-craft-bg dark:bg-craft-darkBg">
+      
+      <!-- DESKTOP VIEW A: WELCOME & CRAFT PROMPT HUB -->
+      <div id="pcWelcomeView" class="flex-1 flex flex-col h-full overflow-y-auto p-8 justify-center items-center">
+        <div class="w-full max-w-2xl space-y-7 pb-16">
+          
+          <!-- Editorial Header -->
+          <div class="space-y-1.5 text-center">
+            <p id="pcLiveDateDisplay" class="text-xs font-mono text-craft-muted dark:text-craft-darkMuted uppercase tracking-wider">
+              Понедельник, 20 октября
+            </p>
+            <h1 id="pcDynamicGreeting" class="font-serif text-3xl md:text-4xl font-normal text-craft-text dark:text-craft-darkText tracking-tight">
+              Добрый день, Александр
+            </h1>
+            <p class="text-xs text-craft-secondary dark:text-craft-darkSecondary">
+              Выберите адресата или сформулируйте задачу в работу
+            </p>
+          </div>
+
+          <!-- The Floating Desktop Prompt Box -->
+          <div class="bg-craft-surface dark:bg-craft-darkSurface rounded-3xl border border-craft-border dark:border-craft-darkBorder p-5 shadow-craft-input focus-within:border-craft-terracotta focus-within:ring-2 focus-within:ring-craft-terracotta/15 transition-all">
+            
+            <!-- Recipient Chips -->
+            <div class="pb-3 mb-2.5 border-b border-craft-borderSubtle dark:border-craft-darkBorderSubtle flex items-center space-x-2 overflow-x-auto no-scrollbar">
+              <span class="text-xs font-mono uppercase text-craft-muted dark:text-craft-darkMuted mr-1 flex-shrink-0">Адресат:</span>
+              
+              <button onclick="selectPCRecipient(1)" data-pc-rec-id="1" class="pc-rec-chip active px-3 py-1 rounded-xl bg-craft-terracotta text-white text-xs font-medium flex items-center space-x-1.5 flex-shrink-0 transition-all">
+                <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                <span>Полина Смирнова</span>
+              </button>
+
+              <button onclick="selectPCRecipient(2)" data-pc-rec-id="2" class="pc-rec-chip px-3 py-1 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle text-craft-text dark:text-craft-darkText text-xs font-medium hover:bg-craft-subtleHover dark:hover:bg-craft-darkSubtleHover flex items-center space-x-1.5 flex-shrink-0 transition-all">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Михаил Романов</span>
+              </button>
+
+              <button onclick="selectPCRecipient(3)" data-pc-rec-id="3" class="pc-rec-chip px-3 py-1 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle text-craft-text dark:text-craft-darkText text-xs font-medium hover:bg-craft-subtleHover dark:hover:bg-craft-darkSubtleHover flex items-center space-x-1.5 flex-shrink-0 transition-all">
+                <span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+                <span>Команда: Продукт</span>
+              </button>
+
+              <button onclick="selectPCRecipient(4)" data-pc-rec-id="4" class="pc-rec-chip px-3 py-1 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle text-craft-text dark:text-craft-darkText text-xs font-medium hover:bg-craft-subtleHover dark:hover:bg-craft-darkSubtleHover flex items-center space-x-1.5 flex-shrink-0 transition-all">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Дарья Соколова</span>
+              </button>
+            </div>
+
+            <!-- Large Textarea -->
+            <textarea 
+              id="pcHubInput"
+              rows="3" 
+              placeholder="Написать сообщение Полине Смирновой... (Enter для отправки, Shift+Enter для новой строки)"
+              oninput="handlePCHubInput(this)"
+              onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); submitFromPCHub();}"
+              class="w-full bg-transparent text-sm text-craft-text dark:text-craft-darkText placeholder-craft-muted/70 resize-none focus:outline-none leading-relaxed font-sans"
+            ></textarea>
+
+            <!-- Bottom Toolbar -->
+            <div class="flex items-center justify-between pt-3 mt-1 border-t border-craft-borderSubtle dark:border-craft-darkBorderSubtle">
+              <div class="flex items-center space-x-2">
+                <button onclick="showToast('Прикрепить файл или прототип')" class="px-2.5 py-1.5 rounded-xl text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText hover:bg-craft-subtle dark:hover:bg-craft-darkSubtle text-xs flex items-center space-x-1.5 transition-all">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                  <span>Файл</span>
+                </button>
+
+                <button onclick="recordAudioMemo()" class="px-2.5 py-1.5 rounded-xl text-craft-muted hover:text-craft-terracotta hover:bg-craft-subtle dark:hover:bg-craft-darkSubtle text-xs flex items-center space-x-1.5 transition-all">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                  <span>Голосовое</span>
+                </button>
+              </div>
+
+              <!-- Send Button -->
+              <button 
+                id="pcHubSendBtn"
+                onclick="submitFromPCHub()"
+                disabled
+                class="w-8 h-8 rounded-full bg-craft-border dark:bg-craft-darkBorder text-craft-muted flex items-center justify-center transition-all duration-150 cursor-not-allowed"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Quick Jump Cards -->
+          <div class="grid grid-cols-3 gap-3">
+            <div onclick="openPCChat(1)" class="p-3.5 rounded-2xl bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card hover:border-craft-terracotta/50 cursor-pointer active:scale-98 transition-all">
+              <span class="text-[10px] font-mono uppercase text-craft-terracotta">Дизайн</span>
+              <h4 class="text-xs font-semibold text-craft-text dark:text-craft-darkText mt-1">Полина Смирнова</h4>
+              <p class="text-[11px] text-craft-muted truncate mt-0.5">Макеты онбординга v4</p>
+            </div>
+
+            <div onclick="openPCChat(2)" class="p-3.5 rounded-2xl bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card hover:border-craft-terracotta/50 cursor-pointer active:scale-98 transition-all">
+              <span class="text-[10px] font-mono uppercase text-amber-600">Разработка</span>
+              <h4 class="text-xs font-semibold text-craft-text dark:text-craft-darkText mt-1">Михаил Романов</h4>
+              <p class="text-[11px] text-craft-muted truncate mt-0.5">Авторизация по СМС</p>
+            </div>
+
+            <div onclick="openPCChat(4)" class="p-3.5 rounded-2xl bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card hover:border-craft-terracotta/50 cursor-pointer active:scale-98 transition-all">
+              <span class="text-[10px] font-mono uppercase text-emerald-600">Документы</span>
+              <h4 class="text-xs font-semibold text-craft-text dark:text-craft-darkText mt-1">Дарья Соколова</h4>
+              <p class="text-[11px] text-craft-muted truncate mt-0.5">Договор ред. 3</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- DESKTOP VIEW B: ACTIVE CONVERSATION SCREEN -->
+      <div id="pcConversationView" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        
+        <!-- Header -->
+        <header class="px-6 py-3.5 border-b border-craft-border/80 dark:border-craft-darkBorder/80 bg-craft-surface/80 dark:bg-craft-darkSurface/80 backdrop-blur-md flex items-center justify-between z-10">
+          <div class="flex items-center space-x-3.5">
+            <div id="pcActiveAvatar" class="w-10 h-10 rounded-2xl flex items-center justify-center font-serif text-white font-medium text-xs shadow-xs">
+              <!-- Dynamic -->
+            </div>
+            <div>
+              <h3 id="pcActiveName" class="font-serif text-base font-semibold text-craft-text dark:text-craft-darkText leading-tight">Полина Смирнова</h3>
+              <p id="pcActiveStatus" class="text-xs text-craft-muted flex items-center space-x-1.5 mt-0.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>в сети • Дизайн продукта</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-1.5">
+            <button onclick="showToast('Аудиозвонок...')" title="Аудиозвонок" class="p-2 rounded-xl text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText hover:bg-craft-subtle dark:hover:bg-craft-darkSubtle active:scale-95 transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            </button>
+
+            <button onclick="openPCWelcome()" title="Закрыть диалог" class="p-2 rounded-xl text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText hover:bg-craft-subtle dark:hover:bg-craft-darkSubtle active:scale-95 transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Pinned Note Bar -->
+        <div id="pcPinnedBanner" class="hidden px-6 py-2 bg-craft-subtle dark:bg-craft-darkSubtle border-b border-craft-border/80 dark:border-craft-darkBorder/80 flex items-center justify-between text-xs">
+          <div class="flex items-center space-x-2 truncate">
+            <svg class="w-3.5 h-3.5 text-craft-terracotta flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+            <span id="pcPinnedText" class="font-medium text-craft-text dark:text-craft-darkText text-xs truncate">Правки по мобильному флоу приняты</span>
+          </div>
+          <button onclick="document.getElementById('pcPinnedBanner').classList.add('hidden')" class="text-craft-muted hover:text-craft-text text-xs ml-2">✕</button>
+        </div>
+
+        <!-- Desktop Messages Stream -->
+        <div class="flex-1 overflow-y-auto px-8 py-6">
+          <div id="pcChatMessagesStream" class="max-w-3xl mx-auto space-y-4">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div id="pcTypingBar" class="hidden max-w-3xl mx-auto w-full px-8 py-1 text-xs text-craft-muted flex items-center space-x-2 font-mono">
+          <span class="w-1.5 h-1.5 rounded-full bg-craft-terracotta animate-pulse"></span>
+          <span id="pcTypingLabel">Собеседник печатает...</span>
+        </div>
+
+        <!-- Bottom Desktop Floating Input -->
+        <div class="p-4 border-t border-craft-border/70 dark:border-craft-darkBorder/70 bg-craft-surface/90 dark:bg-craft-darkSurface/90 backdrop-blur-md pb-6">
+          <div class="max-w-3xl mx-auto bg-craft-bg dark:bg-craft-darkBg rounded-2xl border border-craft-border dark:border-craft-darkBorder p-3 shadow-craft-input focus-within:border-craft-terracotta focus-within:ring-2 focus-within:ring-craft-terracotta/15 transition-all">
+            
+            <textarea 
+              id="pcChatInput" 
+              rows="2" 
+              placeholder="Напишите ответ... (Enter для отправки, Shift+Enter для новой строки)"
+              oninput="handlePCChatInput(this)"
+              onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendPCChatMessage();}"
+              class="w-full bg-transparent text-sm text-craft-text dark:text-craft-darkText placeholder-craft-muted/70 resize-none focus:outline-none max-h-36 leading-relaxed font-sans"
+            ></textarea>
+
+            <div class="flex items-center justify-between pt-2 border-t border-craft-borderSubtle dark:border-craft-darkBorderSubtle mt-1">
+              <div class="flex items-center space-x-1.5">
+                <button onclick="showToast('Прикрепить файл')" class="p-1.5 rounded-lg text-craft-muted hover:text-craft-text dark:hover:text-craft-darkText active:scale-95 transition-all">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                </button>
+
+                <button onclick="recordAudioMemo()" class="p-1.5 rounded-lg text-craft-muted hover:text-craft-terracotta active:scale-95 transition-all">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                </button>
+              </div>
+
+              <!-- Send Button -->
+              <button 
+                id="pcChatSendBtn" 
+                onclick="sendPCChatMessage()" 
+                disabled 
+                class="w-7 h-7 rounded-full bg-craft-border dark:bg-craft-darkBorder text-craft-muted flex items-center justify-center flex-shrink-0 transition-all duration-150 cursor-not-allowed"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-14 z-50 transform translate-y-12 opacity-0 pointer-events-none transition-all duration-200 bg-craft-surface dark:bg-craft-darkSurface text-craft-text dark:text-craft-darkText border border-craft-border dark:border-craft-darkBorder text-xs px-3.5 py-2 rounded-xl shadow-craft-float flex items-center space-x-2">
+    <span class="w-1.5 h-1.5 rounded-full bg-craft-terracotta"></span>
+    <span id="toastMsg">Уведомление</span>
+  </div>
+
+  <!-- ========================================================
+       DATA & JAVASCRIPT STATE
+       ======================================================== -->
+  <script>
+    let activeThreadId = null;
+    let selectedHubRecipientId = 1;
+    let selectedPCHubRecipientId = 1;
+    let currentFilter = 'all';
+    let currentPCFilter = 'all';
+    let currentPlatformMode = 'mobile';
+
+    // Authentic human dialogues (no robotic meta-talk)
+    const threads = [
+      {
+        id: 1,
+        type: 'direct',
+        name: 'Полина Смирнова',
+        role: 'Дизайн продукта',
+        avatarText: 'ПС',
+        avatarBg: 'bg-stone-700',
+        status: 'в сети',
+        time: '14:24',
+        unread: 1,
+        snippet: 'Скинула обновленный фрейм главного экрана',
+        pinnedDecision: 'Правки по мобильному флоу приняты',
+        messages: [
+          {
+            id: 101,
+            author: 'Полина Смирнова',
+            isMe: false,
+            time: '13:48',
+            text: 'Привет! Добавила финальные экраны онбординга и карточек контактов.'
+          },
+          {
+            id: 102,
+            author: 'Полина Смирнова',
+            isMe: false,
+            time: '13:50',
+            isFigma: true,
+            figmaTitle: 'Mobile App / Final Review Flow v4',
+            figmaUrl: 'figma.com/@studio/mobile-v4',
+            text: 'Глянь, пожалуйста, как освободишься:'
+          },
+          {
+            id: 103,
+            author: 'Александр',
+            isMe: true,
+            time: '14:15',
+            text: 'Посмотрел. В онбординге второй экран отличный, только кнопку «Продолжить» давай прижмем чуть ниже по гайдам.'
+          },
+          {
+            id: 104,
+            author: 'Полина Смирнова',
+            isMe: false,
+            time: '14:24',
+            text: 'Ага, поправила и зафиксировала в макете. Можешь проверять.'
+          }
+        ]
+      },
+      {
+        id: 2,
+        type: 'direct',
+        name: 'Михаил Романов',
+        role: 'Фронтенд',
+        avatarText: 'МР',
+        avatarBg: 'bg-amber-700',
+        status: 'в сети',
+        time: '12:45',
+        unread: 0,
+        snippet: 'Голосовое сообщение (0:24)',
+        messages: [
+          {
+            id: 201,
+            author: 'Александр',
+            isMe: true,
+            time: '12:30',
+            text: 'Миш, привет! Авторизация через код уже на тестовом стенде?'
+          },
+          {
+            id: 202,
+            author: 'Михаил Романов',
+            isMe: false,
+            time: '12:45',
+            isAudio: true,
+            duration: '0:24',
+            transcript: 'Привет! Да, бэк подняли полчаса назад. Можно проверять на стенде, смс приходят за пару секунд.'
+          },
+          {
+            id: 203,
+            author: 'Александр',
+            isMe: true,
+            time: '12:47',
+            text: 'Супер, беру в проверку.'
+          }
+        ]
+      },
+      {
+        id: 3,
+        type: 'team',
+        name: 'Команда: Продукт',
+        role: '6 участников',
+        avatarText: 'КП',
+        avatarBg: 'bg-emerald-800',
+        status: '4 онлайн',
+        time: '11:15',
+        unread: 0,
+        snippet: 'Илья: Во вторник в 11:00 синхронизируемся по релизу',
+        messages: [
+          {
+            id: 301,
+            author: 'Илья Чернов',
+            isMe: false,
+            time: '11:10',
+            text: 'Коллеги, во вторник в 11:00 синхронизируемся по релизу. Подготовьте список закрытых задач.'
+          },
+          {
+            id: 302,
+            author: 'Катя',
+            isMe: false,
+            time: '11:15',
+            text: 'Я собрала аналитику по конверсиям за прошлый спринт, скину до созвона.'
+          }
+        ]
+      },
+      {
+        id: 4,
+        type: 'direct',
+        name: 'Дарья Соколова',
+        role: 'Юрист',
+        avatarText: 'ДС',
+        avatarBg: 'bg-indigo-800',
+        status: 'была 20 мин назад',
+        time: 'Вчера',
+        unread: 0,
+        snippet: 'Согласовала правки к договору с подрядчиком',
+        messages: [
+          {
+            id: 401,
+            author: 'Дарья Соколова',
+            isMe: false,
+            time: 'Вчера 16:30',
+            isFile: true,
+            fileName: 'Договор_оказания_услуг_ред3.pdf',
+            fileSize: '340 КБ',
+            text: 'Согласовала правки к договору с подрядчиком. Посмотрите пункт 3.2 по срокам приемки.'
+          }
+        ]
+      }
+    ];
+
+    // ========================================================
+    // PLATFORM MODE SWITCHER (MOBILE <-> PC)
+    // ========================================================
+    function setPlatformMode(mode) {
+      currentPlatformMode = mode;
+      const mob = document.getElementById('mobileContainer');
+      const pc = document.getElementById('pcContainer');
+      const btnMob = document.getElementById('btnSwitchMobile');
+      const btnPC = document.getElementById('btnSwitchPC');
+
+      if (mode === 'pc') {
+        mob.classList.add('hidden');
+        pc.classList.remove('hidden');
+
+        btnPC.className = 'px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center space-x-1.5 transition-all bg-craft-text text-craft-bg dark:bg-craft-darkText dark:text-craft-darkBg shadow-xs';
+        btnMob.className = 'px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center space-x-1.5 transition-all text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText';
+
+        renderPCChats();
+        updatePCDateAndGreeting();
+
+        if (activeThreadId) {
+          openPCChat(activeThreadId);
+        } else {
+          openPCWelcome();
+        }
+      } else {
+        pc.classList.add('hidden');
+        mob.classList.remove('hidden');
+
+        btnMob.className = 'px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center space-x-1.5 transition-all bg-craft-text text-craft-bg dark:bg-craft-darkText dark:text-craft-darkBg shadow-xs';
+        btnPC.className = 'px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center space-x-1.5 transition-all text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText';
+
+        renderRecentChats();
+        if (activeThreadId) {
+          openChat(activeThreadId);
+        }
+      }
+
+      localStorage.setItem('talk_platform_mode', mode);
+    }
+
+    // ========================================================
+    // MOBILE FUNCTIONS (100% UNTOUCHED)
+    // ========================================================
+    function updateDateAndGreeting() {
+      const now = new Date();
+      const hour = now.getHours();
+      let greeting = 'Добрый день';
+      if (hour >= 5 && hour < 12) greeting = 'Доброе утро';
+      else if (hour >= 12 && hour < 18) greeting = 'Добрый день';
+      else if (hour >= 18 && hour < 23) greeting = 'Добрый вечер';
+      else greeting = 'Доброй ночи';
+
+      const el = document.getElementById('dynamicGreeting');
+      if (el) el.textContent = `${greeting}, Александр`;
+
+      const dateEl = document.getElementById('liveDateDisplay');
+      if (dateEl) {
+        const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+        dateEl.textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+      }
+    }
+
+    function selectRecipient(id) {
+      selectedHubRecipientId = id;
+      const chips = document.querySelectorAll('.rec-chip');
+      chips.forEach(chip => {
+        const chipId = parseInt(chip.getAttribute('data-rec-id'), 10);
+        if (chipId === id) {
+          chip.className = 'rec-chip active px-2.5 py-1 rounded-xl bg-craft-terracotta text-white text-xs font-medium flex items-center space-x-1.5 flex-shrink-0 transition-all';
+        } else {
+          chip.className = 'rec-chip px-2.5 py-1 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle text-craft-text dark:text-craft-darkText text-xs font-medium hover:bg-craft-subtleHover dark:hover:bg-craft-darkSubtleHover flex items-center space-x-1.5 flex-shrink-0 transition-all';
+        }
+      });
+
+      const thread = threads.find(t => t.id === id);
+      const input = document.getElementById('hubInput');
+      if (thread && input) {
+        const firstName = thread.name.split(' ')[0];
+        input.placeholder = `Написать сообщение ${firstName}...`;
+        input.focus();
+      }
+    }
+
+    function filterThreads(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-tab').forEach(t => {
+        t.className = 'filter-tab px-3 py-1.5 rounded-full text-xs font-medium bg-craft-subtle dark:bg-craft-darkSubtle text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText transition-all';
+      });
+      btn.className = 'filter-tab active px-3 py-1.5 rounded-full text-xs font-medium bg-craft-text text-craft-bg dark:bg-craft-darkText dark:text-craft-darkBg transition-all';
+      renderRecentChats();
+    }
+
+    function renderRecentChats() {
+      const deck = document.getElementById('recentChatsDeck');
+      if (!deck) return;
+      deck.innerHTML = '';
+
+      let list = threads;
+      if (currentFilter === 'unread') list = threads.filter(t => t.unread > 0);
+      else if (currentFilter === 'direct') list = threads.filter(t => t.type === 'direct');
+      else if (currentFilter === 'team') list = threads.filter(t => t.type === 'team');
+
+      if (list.length === 0) {
+        deck.innerHTML = `
+          <div class="py-8 text-center text-xs text-craft-muted">
+            Нет диалогов в этом списке
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'p-3 rounded-2xl bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card flex items-center space-x-3 cursor-pointer hover:border-craft-terracotta/50 active:scale-98 transition-all';
+        item.onclick = () => openChat(t.id);
+
+        item.innerHTML = `
+          <div class="relative flex-shrink-0">
+            <div class="w-10 h-10 rounded-2xl ${t.avatarBg} text-white font-serif font-medium text-xs flex items-center justify-center shadow-xs">
+              ${t.avatarText}
+            </div>
+            ${t.status.includes('в сети') ? '<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-craft-surface dark:ring-craft-darkSurface"></span>' : ''}
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-semibold text-craft-text dark:text-craft-darkText truncate">${t.name}</h4>
+              <span class="text-[10px] font-mono text-craft-muted ml-1 flex-shrink-0">${t.time}</span>
+            </div>
+            <p class="text-[11px] text-craft-secondary dark:text-craft-darkSecondary truncate mt-0.5">${t.snippet}</p>
+          </div>
+
+          ${t.unread > 0 ? `
+            <span class="w-4 h-4 rounded-full bg-craft-terracotta text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+              ${t.unread}
+            </span>
+          ` : ''}
+        `;
+
+        deck.appendChild(item);
+      });
+    }
+
+    function openChat(threadId) {
+      activeThreadId = threadId;
+      const thread = threads.find(t => t.id === threadId);
+      if (!thread) return;
+
+      thread.unread = 0;
+
+      const avatarEl = document.getElementById('activeAvatar');
+      if (avatarEl) {
+        avatarEl.className = `w-9 h-9 rounded-2xl flex items-center justify-center font-serif text-white font-medium text-xs shadow-xs ${thread.avatarBg}`;
+        avatarEl.textContent = thread.avatarText;
+      }
+
+      const nameEl = document.getElementById('activeName');
+      if (nameEl) nameEl.textContent = thread.name;
+
+      const statusEl = document.getElementById('activeStatus');
+      if (statusEl) {
+        statusEl.innerHTML = `
+          <span class="w-1.5 h-1.5 rounded-full ${thread.status.includes('в сети') ? 'bg-emerald-500' : 'bg-stone-400'}"></span>
+          <span>${thread.status} • ${thread.role}</span>
+        `;
+      }
+
+      const banner = document.getElementById('pinnedBanner');
+      if (banner) {
+        if (thread.pinnedDecision) {
+          banner.classList.remove('hidden');
+          document.getElementById('pinnedText').textContent = thread.pinnedDecision;
+        } else {
+          banner.classList.add('hidden');
+        }
+      }
+
+      document.getElementById('welcomeView').classList.add('hidden');
+      document.getElementById('conversationView').classList.remove('hidden');
+
+      renderMessages();
+      renderRecentChats();
+
+      setTimeout(() => {
+        const stream = document.getElementById('chatMessagesStream');
+        if (stream) stream.scrollTop = stream.scrollHeight;
+        const input = document.getElementById('chatInput');
+        if (input) input.focus();
+      }, 50);
+    }
+
+    function backToWelcome() {
+      document.getElementById('conversationView').classList.add('hidden');
+      document.getElementById('welcomeView').classList.remove('hidden');
+      activeThreadId = null;
+      renderRecentChats();
+    }
+
+    function dismissPinned() {
+      const banner = document.getElementById('pinnedBanner');
+      if (banner) banner.classList.add('hidden');
+    }
+
+    function renderMessages() {
+      const thread = threads.find(t => t.id === activeThreadId);
+      if (!thread) return;
+
+      const stream = document.getElementById('chatMessagesStream');
+      if (!stream) return;
+
+      stream.innerHTML = `
+        <div class="text-center my-2">
+          <span class="font-mono text-[9px] uppercase tracking-wider text-craft-muted bg-craft-subtle dark:bg-craft-darkSubtle px-2.5 py-0.5 rounded-full border border-craft-border/80">
+            Сегодня
+          </span>
+        </div>
+      `;
+
+      thread.messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `flex flex-col ${msg.isMe ? 'items-end' : 'items-start'} space-y-1`;
+
+        if (msg.isFigma) {
+          div.innerHTML = `
+            <div class="max-w-[85%] rounded-2xl overflow-hidden bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card cursor-pointer" onclick="showToast('Открыть ссылку в Figma')">
+              <div class="h-16 bg-stone-900 p-3 flex flex-col justify-end text-white">
+                <span class="text-[9px] uppercase font-mono tracking-wider opacity-60 text-craft-terracotta">Figma File</span>
+                <span class="text-xs font-medium truncate">${msg.figmaTitle}</span>
+              </div>
+              <div class="p-2.5 bg-craft-subtle/50 dark:bg-craft-darkSubtle/50 text-[11px] text-craft-muted">
+                <p class="font-medium text-craft-text dark:text-craft-darkText">${msg.text}</p>
+                <span class="text-[9px] text-craft-terracotta truncate block mt-0.5 underline">${msg.figmaUrl}</span>
+              </div>
+            </div>
+            <span class="text-[9px] font-mono text-craft-muted px-1">${msg.time}</span>
+          `;
+        } else if (msg.isAudio) {
+          div.innerHTML = `
+            <div class="p-3 rounded-2xl bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card space-y-2 max-w-[85%]">
+              <div class="flex items-center space-x-2.5">
+                <button onclick="toggleAudio(this)" class="w-8 h-8 rounded-full bg-craft-terracotta text-white flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform">
+                  <svg class="play-icon w-3.5 h-3.5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <svg class="pause-icon w-3.5 h-3.5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <div class="wave-box flex items-center space-x-0.5 h-5 text-craft-terracotta flex-1">
+                  <span class="wave-bar w-1 bg-current rounded-full h-2"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-4"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-5"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-3"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-4"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-2"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-4"></span>
+                </div>
+                <span class="text-[10px] font-mono text-craft-muted">${msg.duration}</span>
+              </div>
+              <p class="text-[11px] text-craft-secondary dark:text-craft-darkSecondary bg-craft-subtle dark:bg-craft-darkSubtle p-2 rounded-xl italic">
+                «${msg.transcript}»
+              </p>
+            </div>
+            <span class="text-[9px] font-mono text-craft-muted px-1">${msg.time}</span>
+          `;
+        } else if (msg.isFile) {
+          div.innerHTML = `
+            <div class="p-3 rounded-2xl bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card max-w-[85%] flex items-center space-x-3 cursor-pointer" onclick="showToast('Скачивание файла')">
+              <div class="w-8 h-8 rounded-xl bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-mono text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                PDF
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-medium text-craft-text dark:text-craft-darkText truncate">${msg.fileName}</p>
+                <span class="text-[10px] text-craft-muted">${msg.fileSize}</span>
+              </div>
+            </div>
+            <span class="text-[9px] font-mono text-craft-muted px-1">${msg.time}</span>
+          `;
+        } else if (msg.isMe) {
+          div.innerHTML = `
+            <div class="p-3 rounded-2xl rounded-tr-xs bg-craft-terracotta text-white text-xs leading-relaxed max-w-[82%] shadow-xs">
+              ${msg.text}
+            </div>
+            <div class="flex items-center space-x-1 text-[9px] font-mono text-craft-muted px-1">
+              <span>${msg.time}</span>
+              <span>✓✓</span>
+            </div>
+          `;
+        } else {
+          div.innerHTML = `
+            <div class="p-3 rounded-2xl rounded-tl-xs bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder text-craft-text dark:text-craft-darkText text-xs leading-relaxed max-w-[85%] shadow-craft-card">
+              ${msg.text}
+            </div>
+            <span class="text-[9px] font-mono text-craft-muted px-1">${msg.time}</span>
+          `;
+        }
+
+        stream.appendChild(div);
+      });
+    }
+
+    function handleHubInput(textarea) {
+      const btn = document.getElementById('hubSendBtn');
+      const val = textarea.value.trim();
+
+      if (val.length > 0) {
+        btn.disabled = false;
+        btn.className = 'w-8 h-8 rounded-full bg-craft-terracotta text-white flex items-center justify-center shadow-sm active:scale-95 transition-all cursor-pointer';
+      } else {
+        btn.disabled = true;
+        btn.className = 'w-8 h-8 rounded-full bg-craft-border dark:bg-craft-darkBorder text-craft-muted flex items-center justify-center transition-all cursor-not-allowed';
+      }
+    }
+
+    function submitFromHub() {
+      const input = document.getElementById('hubInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      handleHubInput(input);
+
+      openChat(selectedHubRecipientId);
+      postUserMessage(text);
+    }
+
+    function handleChatInput(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 90) + 'px';
+
+      const btn = document.getElementById('chatSendBtn');
+      const val = textarea.value.trim();
+
+      if (val.length > 0) {
+        btn.disabled = false;
+        btn.className = 'w-7 h-7 rounded-full bg-craft-terracotta text-white flex items-center justify-center flex-shrink-0 shadow-sm active:scale-95 transition-all cursor-pointer';
+      } else {
+        btn.disabled = true;
+        btn.className = 'w-7 h-7 rounded-full bg-craft-border dark:bg-craft-darkBorder text-craft-muted flex items-center justify-center flex-shrink-0 transition-all cursor-not-allowed';
+      }
+    }
+
+    function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      input.style.height = 'auto';
+      handleChatInput(input);
+
+      postUserMessage(text);
+    }
+
+    function postUserMessage(text) {
+      const thread = threads.find(t => t.id === activeThreadId);
+      if (!thread) return;
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      thread.messages.push({
+        id: Date.now(),
+        author: 'Александр',
+        isMe: true,
+        time: timeStr,
+        text: text
+      });
+
+      thread.snippet = `Вы: ${text}`;
+      thread.time = timeStr;
+
+      renderMessages();
+      renderRecentChats();
+      if (currentPlatformMode === 'pc') {
+        renderPCMessages();
+        renderPCChats();
+      }
+
+      const stream = document.getElementById('chatMessagesStream');
+      if (stream) stream.scrollTop = stream.scrollHeight;
+
+      // Realistic reply simulation
+      const typingBar = document.getElementById('typingBar');
+      const typingLabel = document.getElementById('typingLabel');
+      if (typingLabel) typingLabel.textContent = `${thread.name} печатает...`;
+      if (typingBar) typingBar.classList.remove('hidden');
+
+      const pcTypingBar = document.getElementById('pcTypingBar');
+      const pcTypingLabel = document.getElementById('pcTypingLabel');
+      if (pcTypingLabel) pcTypingLabel.textContent = `${thread.name} печатает...`;
+      if (pcTypingBar) pcTypingBar.classList.remove('hidden');
+
+      setTimeout(() => {
+        if (typingBar) typingBar.classList.add('hidden');
+        if (pcTypingBar) pcTypingBar.classList.add('hidden');
+        const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        thread.messages.push({
+          id: Date.now(),
+          author: thread.name,
+          isMe: false,
+          time: replyTime,
+          text: 'Договорились, принял!'
+        });
+        thread.snippet = `${thread.name}: Договорились, принял!`;
+
+        renderMessages();
+        renderRecentChats();
+        if (currentPlatformMode === 'pc') {
+          renderPCMessages();
+          renderPCChats();
+        }
+
+        if (stream) stream.scrollTop = stream.scrollHeight;
+        const pcStream = document.getElementById('pcChatMessagesStream');
+        if (pcStream && pcStream.parentElement) pcStream.parentElement.scrollTop = pcStream.parentElement.scrollHeight;
+
+        showToast(`Новое сообщение от ${thread.name}`);
+      }, 1200);
+    }
+
+    // ========================================================
+    // PC / DESKTOP VERSION FUNCTIONS
+    // ========================================================
+    function updatePCDateAndGreeting() {
+      const now = new Date();
+      const hour = now.getHours();
+      let greeting = 'Добрый день';
+      if (hour >= 5 && hour < 12) greeting = 'Доброе утро';
+      else if (hour >= 12 && hour < 18) greeting = 'Добрый день';
+      else if (hour >= 18 && hour < 23) greeting = 'Добрый вечер';
+      else greeting = 'Доброй ночи';
+
+      const el = document.getElementById('pcDynamicGreeting');
+      if (el) el.textContent = `${greeting}, Александр`;
+
+      const dateEl = document.getElementById('pcLiveDateDisplay');
+      if (dateEl) {
+        const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+        dateEl.textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+      }
+    }
+
+    function renderPCChats(searchTerm = '') {
+      const deck = document.getElementById('pcRecentChatsDeck');
+      if (!deck) return;
+      deck.innerHTML = '';
+
+      let list = threads;
+      if (currentPCFilter === 'unread') list = threads.filter(t => t.unread > 0);
+      else if (currentPCFilter === 'direct') list = threads.filter(t => t.type === 'direct');
+      else if (currentPCFilter === 'team') list = threads.filter(t => t.type === 'team');
+
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        list = list.filter(t => t.name.toLowerCase().includes(q) || t.snippet.toLowerCase().includes(q));
+      }
+
+      if (list.length === 0) {
+        deck.innerHTML = `
+          <div class="py-8 text-center text-xs text-craft-muted">
+            Ничего не найдено
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(t => {
+        const isSelected = (activeThreadId === t.id);
+        const item = document.createElement('div');
+        item.className = `p-3 rounded-2xl border transition-all flex items-center space-x-3 cursor-pointer ${
+          isSelected 
+            ? 'bg-craft-subtle dark:bg-craft-darkSubtle border-craft-border dark:border-craft-darkBorder shadow-xs' 
+            : 'bg-transparent border-transparent hover:bg-craft-subtle/50 dark:hover:bg-craft-darkSubtle/50'
+        }`;
+        item.onclick = () => openPCChat(t.id);
+
+        item.innerHTML = `
+          <div class="relative flex-shrink-0">
+            <div class="w-10 h-10 rounded-2xl ${t.avatarBg} text-white font-serif font-medium text-xs flex items-center justify-center shadow-xs">
+              ${t.avatarText}
+            </div>
+            ${t.status.includes('в сети') ? '<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-craft-surface dark:ring-craft-darkSurface"></span>' : ''}
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-semibold text-craft-text dark:text-craft-darkText truncate">${t.name}</h4>
+              <span class="text-[10px] font-mono text-craft-muted ml-1 flex-shrink-0">${t.time}</span>
+            </div>
+            <p class="text-[11px] text-craft-secondary dark:text-craft-darkSecondary truncate mt-0.5">${t.snippet}</p>
+          </div>
+
+          ${t.unread > 0 ? `
+            <span class="w-4 h-4 rounded-full bg-craft-terracotta text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+              ${t.unread}
+            </span>
+          ` : ''}
+        `;
+
+        deck.appendChild(item);
+      });
+    }
+
+    function openPCChat(threadId) {
+      activeThreadId = threadId;
+      const thread = threads.find(t => t.id === threadId);
+      if (!thread) return;
+
+      thread.unread = 0;
+
+      const avatarEl = document.getElementById('pcActiveAvatar');
+      if (avatarEl) {
+        avatarEl.className = `w-10 h-10 rounded-2xl flex items-center justify-center font-serif text-white font-medium text-xs shadow-xs ${thread.avatarBg}`;
+        avatarEl.textContent = thread.avatarText;
+      }
+
+      const nameEl = document.getElementById('pcActiveName');
+      if (nameEl) nameEl.textContent = thread.name;
+
+      const statusEl = document.getElementById('pcActiveStatus');
+      if (statusEl) {
+        statusEl.innerHTML = `
+          <span class="w-1.5 h-1.5 rounded-full ${thread.status.includes('в сети') ? 'bg-emerald-500' : 'bg-stone-400'}"></span>
+          <span>${thread.status} • ${thread.role}</span>
+        `;
+      }
+
+      const banner = document.getElementById('pcPinnedBanner');
+      if (banner) {
+        if (thread.pinnedDecision) {
+          banner.classList.remove('hidden');
+          document.getElementById('pcPinnedText').textContent = thread.pinnedDecision;
+        } else {
+          banner.classList.add('hidden');
+        }
+      }
+
+      document.getElementById('pcWelcomeView').classList.add('hidden');
+      document.getElementById('pcConversationView').classList.remove('hidden');
+
+      renderPCMessages();
+      renderPCChats();
+
+      setTimeout(() => {
+        const stream = document.getElementById('pcChatMessagesStream');
+        if (stream && stream.parentElement) stream.parentElement.scrollTop = stream.parentElement.scrollHeight;
+        const input = document.getElementById('pcChatInput');
+        if (input) input.focus();
+      }, 50);
+    }
+
+    function openPCWelcome() {
+      activeThreadId = null;
+      document.getElementById('pcConversationView').classList.add('hidden');
+      document.getElementById('pcWelcomeView').classList.remove('hidden');
+      renderPCChats();
+    }
+
+    function filterPCThreads(filter, btn) {
+      currentPCFilter = filter;
+      document.querySelectorAll('.pc-filter-tab').forEach(t => {
+        t.className = 'pc-filter-tab px-2.5 py-1 rounded-lg text-[11px] font-medium bg-craft-subtle dark:bg-craft-darkSubtle text-craft-muted dark:text-craft-darkMuted hover:text-craft-text dark:hover:text-craft-darkText transition-all';
+      });
+      btn.className = 'pc-filter-tab active px-2.5 py-1 rounded-lg text-[11px] font-medium bg-craft-text text-craft-bg dark:bg-craft-darkText dark:text-craft-darkBg transition-all';
+      renderPCChats();
+    }
+
+    function handlePCSearch(val) {
+      renderPCChats(val);
+    }
+
+    function selectPCRecipient(id) {
+      selectedPCHubRecipientId = id;
+      const chips = document.querySelectorAll('.pc-rec-chip');
+      chips.forEach(chip => {
+        const chipId = parseInt(chip.getAttribute('data-pc-rec-id'), 10);
+        if (chipId === id) {
+          chip.className = 'pc-rec-chip active px-3 py-1 rounded-xl bg-craft-terracotta text-white text-xs font-medium flex items-center space-x-1.5 flex-shrink-0 transition-all';
+        } else {
+          chip.className = 'pc-rec-chip px-3 py-1 rounded-xl bg-craft-subtle dark:bg-craft-darkSubtle text-craft-text dark:text-craft-darkText text-xs font-medium hover:bg-craft-subtleHover dark:hover:bg-craft-darkSubtleHover flex items-center space-x-1.5 flex-shrink-0 transition-all';
+        }
+      });
+
+      const thread = threads.find(t => t.id === id);
+      const input = document.getElementById('pcHubInput');
+      if (thread && input) {
+        input.placeholder = `Написать сообщение ${thread.name}... (Enter для отправки, Shift+Enter для новой строки)`;
+        input.focus();
+      }
+    }
+
+    function handlePCHubInput(textarea) {
+      const btn = document.getElementById('pcHubSendBtn');
+      const val = textarea.value.trim();
+
+      if (val.length > 0) {
+        btn.disabled = false;
+        btn.className = 'w-8 h-8 rounded-full bg-craft-terracotta text-white flex items-center justify-center shadow-sm active:scale-95 transition-all cursor-pointer';
+      } else {
+        btn.disabled = true;
+        btn.className = 'w-8 h-8 rounded-full bg-craft-border dark:bg-craft-darkBorder text-craft-muted flex items-center justify-center transition-all cursor-not-allowed';
+      }
+    }
+
+    function submitFromPCHub() {
+      const input = document.getElementById('pcHubInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      handlePCHubInput(input);
+
+      openPCChat(selectedPCHubRecipientId);
+      postUserMessage(text);
+    }
+
+    function renderPCMessages() {
+      const thread = threads.find(t => t.id === activeThreadId);
+      if (!thread) return;
+
+      const stream = document.getElementById('pcChatMessagesStream');
+      if (!stream) return;
+
+      stream.innerHTML = `
+        <div class="text-center my-4">
+          <span class="font-mono text-[10px] uppercase tracking-wider text-craft-muted bg-craft-subtle dark:bg-craft-darkSubtle px-3 py-1 rounded-full border border-craft-border/80">
+            Сегодня
+          </span>
+        </div>
+      `;
+
+      thread.messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `flex flex-col ${msg.isMe ? 'items-end' : 'items-start'} space-y-1.5`;
+
+        if (msg.isFigma) {
+          div.innerHTML = `
+            <div class="max-w-[70%] rounded-2xl overflow-hidden bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card cursor-pointer" onclick="showToast('Открыть ссылку в Figma')">
+              <div class="h-24 bg-stone-900 p-4 flex flex-col justify-end text-white">
+                <span class="text-[10px] uppercase font-mono tracking-wider opacity-60 text-craft-terracotta">Figma File</span>
+                <span class="text-sm font-medium truncate">${msg.figmaTitle}</span>
+              </div>
+              <div class="p-3.5 bg-craft-subtle/50 dark:bg-craft-darkSubtle/50 text-xs text-craft-muted">
+                <p class="font-medium text-craft-text dark:text-craft-darkText">${msg.text}</p>
+                <span class="text-xs text-craft-terracotta truncate block mt-1 underline">${msg.figmaUrl}</span>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono text-craft-muted px-1">${msg.time}</span>
+          `;
+        } else if (msg.isAudio) {
+          div.innerHTML = `
+            <div class="p-4 rounded-2xl bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card space-y-2.5 max-w-[70%]">
+              <div class="flex items-center space-x-3">
+                <button onclick="toggleAudio(this)" class="w-9 h-9 rounded-full bg-craft-terracotta text-white flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform">
+                  <svg class="play-icon w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <svg class="pause-icon w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <div class="wave-box flex items-center space-x-1 h-6 text-craft-terracotta flex-1">
+                  <span class="wave-bar w-1 bg-current rounded-full h-2"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-4"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-6"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-3"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-5"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-2"></span>
+                  <span class="wave-bar w-1 bg-current rounded-full h-4"></span>
+                </div>
+                <span class="text-xs font-mono text-craft-muted">${msg.duration}</span>
+              </div>
+              <p class="text-xs text-craft-secondary dark:text-craft-darkSecondary bg-craft-subtle dark:bg-craft-darkSubtle p-2.5 rounded-xl italic">
+                «${msg.transcript}»
+              </p>
+            </div>
+            <span class="text-[10px] font-mono text-craft-muted px-1">${msg.time}</span>
+          `;
+        } else if (msg.isFile) {
+          div.innerHTML = `
+            <div class="p-3.5 rounded-2xl bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder shadow-craft-card max-w-[70%] flex items-center space-x-3.5 cursor-pointer" onclick="showToast('Скачивание файла')">
+              <div class="w-10 h-10 rounded-xl bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-mono text-xs font-bold flex items-center justify-center flex-shrink-0">
+                PDF
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-medium text-craft-text dark:text-craft-darkText truncate">${msg.fileName}</p>
+                <span class="text-[11px] text-craft-muted">${msg.fileSize}</span>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono text-craft-muted px-1">${msg.time}</span>
+          `;
+        } else if (msg.isMe) {
+          div.innerHTML = `
+            <div class="p-3.5 rounded-2xl rounded-tr-xs bg-craft-terracotta text-white text-xs md:text-sm leading-relaxed max-w-[70%] shadow-xs">
+              ${msg.text}
+            </div>
+            <div class="flex items-center space-x-1.5 text-[10px] font-mono text-craft-muted px-1">
+              <span>${msg.time}</span>
+              <span>✓✓</span>
+            </div>
+          `;
+        } else {
+          div.innerHTML = `
+            <div class="p-3.5 rounded-2xl rounded-tl-xs bg-craft-surface dark:bg-craft-darkSurface border border-craft-border dark:border-craft-darkBorder text-craft-text dark:text-craft-darkText text-xs md:text-sm leading-relaxed max-w-[70%] shadow-craft-card">
+              ${msg.text}
+            </div>
+            <span class="text-[10px] font-mono text-craft-muted px-1">${msg.time}</span>
+          `;
+        }
+
+        stream.appendChild(div);
+      });
+    }
+
+    function handlePCChatInput(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+
+      const btn = document.getElementById('pcChatSendBtn');
+      const val = textarea.value.trim();
+
+      if (val.length > 0) {
+        btn.disabled = false;
+        btn.className = 'w-7 h-7 rounded-full bg-craft-terracotta text-white flex items-center justify-center flex-shrink-0 shadow-sm active:scale-95 transition-all cursor-pointer';
+      } else {
+        btn.disabled = true;
+        btn.className = 'w-7 h-7 rounded-full bg-craft-border dark:bg-craft-darkBorder text-craft-muted flex items-center justify-center flex-shrink-0 transition-all cursor-not-allowed';
+      }
+    }
+
+    function sendPCChatMessage() {
+      const input = document.getElementById('pcChatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      input.style.height = 'auto';
+      handlePCChatInput(input);
+
+      postUserMessage(text);
+    }
+
+    // ========================================================
+    // SHARED UTILITIES
+    // ========================================================
+    function toggleAudio(btn) {
+      const box = btn.closest('div').querySelector('.wave-box');
+      const playIcon = btn.querySelector('.play-icon');
+      const pauseIcon = btn.querySelector('.pause-icon');
+
+      if (box.classList.contains('is-playing')) {
+        box.classList.remove('is-playing');
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+      } else {
+        box.classList.add('is-playing');
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        showToast('Воспроизведение войса...');
+      }
+    }
+
+    function recordAudioMemo() {
+      showToast('Удерживайте для записи аудиосообщения');
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        localStorage.setItem('talk_theme', 'light');
+      } else {
+        html.classList.add('dark');
+        localStorage.setItem('talk_theme', 'dark');
+      }
+    }
+    if (localStorage.getItem('talk_theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+      toast.classList.remove('opacity-0', 'translate-y-12', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-12', 'pointer-events-none');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2000);
+    }
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      updateDateAndGreeting();
+      renderRecentChats();
+
+      const savedMode = localStorage.getItem('talk_platform_mode');
+      if (savedMode === 'pc') {
+        setPlatformMode('pc');
+      }
+    });
+  </script>
+</body>
+</html>
